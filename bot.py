@@ -14,29 +14,17 @@ load_dotenv(env_path)
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_TOKEN"))
 
-timestamp = None
-channel_id = None
-# Link do wiadomości
-link_to_message = None
+# TODO przechowywanie zmiennych przy pomocy token
 
-# id wywołania
-trigger_id = None
+requests = {}
 
-# pobieranie reakcji z tej wiadomości
-reactions_response = None
+RESPOND_NAME = "respond"
+LINK_TO_MESSAGE_NAME = "link_to_message"
+REACTIONS_NAME = "reactions"
+SUMMARY_NAME = "summary"
+MEMBERS_NAME = "members"
+USERS_TO_PING_NAME = "users_to_ping"
 
-reactions = None
-
-# pobranie listy użytkowników kanału
-members = None
-
-respond_ = None
-
-
-summary = "*Podsumowanie reakcji na wiadomość " + \
-    str(link_to_message) + " *\n"
-
-users_to_ping = []
 
 MODAL_ID = "COUNT_REACTIONS_MODAL"
 '''
@@ -50,7 +38,7 @@ MODAL_ID = "COUNT_REACTIONS_MODAL"
 '''
 
 
-def show_reactions(reactions_chosen, members):
+def show_reactions(reactions_chosen, members, reactions):
     summary = ""
     reaction_counter = 0
     for reaction_type in reactions:
@@ -98,35 +86,40 @@ def shortcut_count(client, ack, respond, payload):
     # odpowiadamy że otrzymaliśmy
     ack()
     # print(payload)
-    global respond_, timestamp, channel_id, link_to_message, trigger_id, reactions_response, reactions, members, summary, users_to_ping
+    global requests
 
-    respond_ = respond
+    token = payload["token"]
+
+    requests[token] = {}
+    requests[token][RESPOND_NAME] = respond
     # W celu charakteryzacji wiadomości
     timestamp = payload["message_ts"]
     # ID kanału
     channel_id = payload["channel"]["id"]
     # Link do wiadomości
-    link_to_message = client.chat_getPermalink(
+    requests[token][LINK_TO_MESSAGE_NAME] = client.chat_getPermalink(
         channel=channel_id, message_ts=timestamp)["permalink"]
 
     # id wywołania
     trigger_id = payload["trigger_id"]
+    # print(payload)
 
     # pobieranie reakcji z tej wiadomości
     reactions_response = client.reactions_get(
         timestamp=timestamp, full=True, channel=channel_id)
 
-    reactions = reactions_response["message"]["reactions"]
+    requests[token][REACTIONS_NAME] = reactions_response["message"]["reactions"]
 
     # pobranie listy użytkowników kanału
-    members = client.conversations_members(channel=channel_id)["members"]
+    requests[token][MEMBERS_NAME] = client.conversations_members(channel=channel_id)[
+        "members"]
 
-    open_modal(client, trigger_id, reactions)
+    open_modal(client, trigger_id, requests[token][REACTIONS_NAME])
 
-    summary = "*Podsumowanie reakcji na wiadomość " + \
-        str(link_to_message) + " *\n"
+    requests[token][SUMMARY_NAME] = "*Podsumowanie reakcji na wiadomość " + \
+        str(requests[token][LINK_TO_MESSAGE_NAME]) + " *\n"
 
-    users_to_ping = []
+    requests[token][USERS_TO_PING_NAME] = []
 
     # wysyłamy wiadomość widoczna tylko dla tej osoby
 
@@ -135,27 +128,39 @@ def shortcut_count(client, ack, respond, payload):
 
 @app.view(MODAL_ID)
 def handle_submission(client, ack, body, view):
+    token = body["token"]
+    global requests
+    if token not in requests:
+        errors = {}
+        errors["token_not_found"] = "Something went wrong: token not found"
+        ack(response_action="errors", errors=errors)
+        return None
+
     ack()
-    print(body)
-    global summary, respond_
+    # print(body)
     chosen_reactions = []
     for reaction in view["state"]["values"]["SELECT_REACTIONS"]["REACTIONS_LIST"]["selected_options"]:
         chosen_reactions.append(reaction["value"])
 
-    str_react = str(show_reactions(chosen_reactions, members))
-    str_not_react = str(show_not_reacted(members, users_to_ping, client))
+    str_react = str(show_reactions(
+        chosen_reactions, requests[token][MEMBERS_NAME], requests[token][REACTIONS_NAME]))
+    str_not_react = str(show_not_reacted(
+        requests[token][MEMBERS_NAME], requests[token][USERS_TO_PING_NAME], client))
 
     for option in view["state"]["values"]["SELECT_OPTIONS"]["checkboxes-action"]["selected_options"]:
         if str(option["value"]) == "PING":
-            ping_users(client, users_to_ping, link_to_message)
+            ping_users(client, requests[token][USERS_TO_PING_NAME],
+                       requests[token][LINK_TO_MESSAGE_NAME])
 
         if str(option["value"]) == "SHOW_VOTES":
-            summary += str_react
+            requests[token][SUMMARY_NAME] += str_react
         if str(option["value"]) == "SHOW_NOT_REACTED":
-            summary += str_not_react
+            requests[token][SUMMARY_NAME] += str_not_react
 
-    respond_(response_type="ephemeral", text=summary)
+    requests[token][RESPOND_NAME](
+        response_type="ephemeral", text=requests[token][SUMMARY_NAME])
     print("Pomyslnie wykonano zliczanie reakcji")
+    requests.pop(token)
 
 
 def ping_users(client, users, message_link):
