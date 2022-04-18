@@ -103,12 +103,16 @@ def shortcut_count(client, ack, respond, payload):
     # id wywołania
     trigger_id = payload["trigger_id"]
     # print(payload)
-
-    # pobieranie reakcji z tej wiadomości
-    reactions_response = client.reactions_get(
-        timestamp=timestamp, full=True, channel=channel_id)
-
-    requests[token][REACTIONS_NAME] = reactions_response["message"]["reactions"]
+    try:
+        # pobieranie reakcji z tej wiadomości
+        reactions_response = client.reactions_get(
+            timestamp=timestamp, full=True, channel=channel_id)
+        requests[token][REACTIONS_NAME] = reactions_response["message"]["reactions"]
+    except KeyError:
+        respond(response_type="ephemeral", text=(
+            "Błąd - brak reakcji na " + requests[token][LINK_TO_MESSAGE_NAME]))
+        requests.pop(token)
+        return None
 
     # pobranie listy użytkowników kanału
     requests[token][MEMBERS_NAME] = client.conversations_members(channel=channel_id)[
