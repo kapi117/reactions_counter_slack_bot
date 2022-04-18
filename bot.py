@@ -14,8 +14,6 @@ load_dotenv(env_path)
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_TOKEN"))
 
-# TODO przechowywanie zmiennych przy pomocy token
-
 requests = {}
 
 RESPOND_NAME = "respond"
@@ -27,6 +25,7 @@ USERS_TO_PING_NAME = "users_to_ping"
 
 
 MODAL_ID = "COUNT_REACTIONS_MODAL"
+
 '''
     Message shortcut (czyli opcja przy kliknięciu ... przy wiadomości na kanale gdzie jest bot)
     Wywoływany przez callback "len"
@@ -44,14 +43,11 @@ def show_reactions(reactions_chosen, members, reactions):
     for reaction_type in reactions:
         if reaction_type['name'] in reactions_chosen:
             reaction_counter += 1
-            # print(reaction_type)
             # dla każdej reakcji wypisujemy ją, ilość oraz osoby
             summary += str(reaction_counter) + ". Reakcja: :" + str(reaction_type['name']) \
                 + ": \n\t- Ilość odpowiedzi: " + str(reaction_type['count']) +\
                 "\n\t- Kto głosował:\n"
             for user in reaction_type["users"]:
-                #act_usr = client.users_info(user=user)
-                #summary += "\t\t<@" + str(act_usr["user"]["name"]) + ">\n"
                 summary += "\t\t<@" + str(user) + ">\n"
                 if user in members:
                     members.remove(user)
@@ -67,6 +63,9 @@ def show_not_reacted(members, users_to_ping, client):
         summary += "Niewdzięcznicy którzy nie odpowiedzieli to:\n"
         for user in members:
             # TODO uwydajnić to
+            '''
+                Rozwiązać to w ten sposób, że znamy ID bota i sprawdzamy, czy jest to ono
+            '''
             act_usr = client.users_info(user=user)
             if "bot_id" in act_usr["user"]["profile"]:
                 boty += 1
@@ -126,6 +125,14 @@ def shortcut_count(client, ack, respond, payload):
     # ping_users(client, users_to_ping, link_to_message)
 
 
+@app.view_closed(MODAL_ID)
+def handle_close(ack, body):
+    token = body["token"]
+    requests.pop(token)
+    ack()
+    print("Zamknięto okienko")
+
+
 @app.view(MODAL_ID)
 def handle_submission(client, ack, body, view):
     token = body["token"]
@@ -156,6 +163,12 @@ def handle_submission(client, ack, body, view):
             requests[token][SUMMARY_NAME] += str_react
         if str(option["value"]) == "SHOW_NOT_REACTED":
             requests[token][SUMMARY_NAME] += str_not_react
+        if str(option["value"]) == "SEND_DM_NOT_REACTED":
+            send_dm_to_users(
+                client, requests[token][USERS_TO_PING_NAME], requests[token][LINK_TO_MESSAGE_NAME])
+            requests[token][SUMMARY_NAME] += '''
+                Wysłałem prywatne wiadomości do tych wszystkich, co nie odpowiedzieli :yum:
+            '''
 
     requests[token][RESPOND_NAME](
         response_type="ephemeral", text=requests[token][SUMMARY_NAME])
@@ -163,7 +176,19 @@ def handle_submission(client, ack, body, view):
     requests.pop(token)
 
 
+def send_dm_to_users(client, users_to_ping, link_to_message):
+    text = '''
+        Siemanko kochany WRSS'owiczu! :wave: Dostałem zadanie przypomnieć Ci żeby odpowiedzieć na wiadomość, która znajduje się tutaj: 
+        ''' + link_to_message + '''
+    Wiem, że pewnie masz niesłychanie dużo pracy, ale myślę, że pójdzie Ci to szybko :wink:
+    A z tego co wiem, lepiej nie lądować na kanale *#ping* :woozy_face:'''
+    for user in users_to_ping:
+        client.chat_postMessage(
+            channel=user, text=text)
+
+
 def ping_users(client, users, message_link):
+    # TODO wyświetlaj okienko z osobami które będą spingowane i z możliwością ich odznaczenia
     ping_channel_name = "#ping"
     # oznaczamy kogoś za pomocą <@usr_id>
     if len(users) > 0:
@@ -195,6 +220,7 @@ def open_modal(client, trigger_id, reactions):
     view = '''
         {
             "type": "modal",
+            "notify_on_close": true,
             "callback_id": "''' + MODAL_ID + '''",
             "submit": {
                 "type": "plain_text",
@@ -310,6 +336,7 @@ def open_modal(client, trigger_id, reactions):
     '''
 
     client.views_open(trigger_id=trigger_id, view=view)
+    print("Otwarto okienko")
 
 
 # Start your app
