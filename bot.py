@@ -12,7 +12,7 @@ env_path = Path('.') / '.env'
 load_dotenv(env_path)
 
 # Initializes your app with your bot token and socket mode handler
-app = App(token=os.environ.get("SLACK_TOKEN"))
+app = App(token=os.environ.get("SLACK_TOKEN_WRSS"))
 
 requests = {}
 
@@ -57,20 +57,15 @@ def show_reactions(reactions_chosen, members, reactions):
 def show_not_reacted(members, users_to_ping, client):
     # w members są też boty które trzeba odliczyć żeby wiedzieć czy wszyscy odpowiedzieli
     boty = 0
+    bots_id = ["U03BV419LD9"]
     summary = ""
     if len(members) > 0:
         # sprawdzamy kto nie odpowiedział
         summary += "Niewdzięcznicy którzy nie odpowiedzieli to:\n"
         for user in members:
-            # TODO uwydajnić to
-            '''
-                Rozwiązać to w ten sposób, że znamy ID bota i sprawdzamy, czy jest to ono
-            '''
-            act_usr = client.users_info(user=user)
-            if "bot_id" in act_usr["user"]["profile"]:
+            if user in bots_id:
                 boty += 1
                 continue
-            #summary += "\t- " + str(act_usr["user"]["name"]) + "\n"
             summary += "\t\t<@" + str(user) + ">\n"
             users_to_ping.append(user)
 
@@ -80,7 +75,7 @@ def show_not_reacted(members, users_to_ping, client):
     return summary
 
 
-@app.shortcut("len")
+@app.shortcut("analyse_reaction")
 def shortcut_count(client, ack, respond, payload):
     # odpowiadamy że otrzymaliśmy
     ack()
@@ -341,4 +336,4 @@ def open_modal(client, trigger_id, reactions):
 
 # Start your app
 if __name__ == "__main__":
-    SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
+    SocketModeHandler(app, os.environ["SLACK_APP_TOKEN_WRSS"]).start()
