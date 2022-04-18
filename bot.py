@@ -1,3 +1,8 @@
+'''
+    Autor: Kacper Iwicki
+    Mail: kacper.iwi@gmail.com
+'''
+
 from dotenv import load_dotenv
 import os
 from pathlib import Path
