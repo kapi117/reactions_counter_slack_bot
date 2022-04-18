@@ -30,6 +30,7 @@ USERS_TO_PING_NAME = "users_to_ping"
 
 
 MODAL_ID = "COUNT_REACTIONS_MODAL"
+PING_MODAL_ID = "PING_USERS_MODAL"
 
 '''
     Message shortcut (czyli opcja przy kliknięciu ... przy wiadomości na kanale gdzie jest bot)
@@ -133,9 +134,22 @@ def handle_close(ack, body):
     print("Zamknięto okienko")
 
 
+@app.view(PING_MODAL_ID)
+def handle_ping_submission(client, ack, body, view):
+    ack()
+    link_to_message = view["private_metadata"]
+    users_to_ping = []
+    for user in view["state"]["values"]["SELECT_TO_PING"]["USERS_LIST"]["selected_conversations"]:
+        users_to_ping.append(user)
+
+    ping_users(client, users_to_ping, link_to_message)
+    print("Zamknięto okienko pingu")
+
+
 @app.view(MODAL_ID)
 def handle_submission(client, ack, body, view):
     token = body["token"]
+    trigger_id = body["trigger_id"]
     global requests
     if token not in requests:
         errors = {}
@@ -156,8 +170,14 @@ def handle_submission(client, ack, body, view):
 
     for option in view["state"]["values"]["SELECT_OPTIONS"]["checkboxes-action"]["selected_options"]:
         if str(option["value"]) == "PING":
-            ping_users(client, requests[token][USERS_TO_PING_NAME],
-                       requests[token][LINK_TO_MESSAGE_NAME])
+            '''ping_users(client, requests[token][USERS_TO_PING_NAME],
+                       requests[token][LINK_TO_MESSAGE_NAME])'''
+            open_ping_modal(client=client, trigger_id=trigger_id,
+                            users_to_ping=requests[token][USERS_TO_PING_NAME], link_to_message=requests[token][LINK_TO_MESSAGE_NAME])
+
+            requests[token][SUMMARY_NAME] += '''
+                Otworzyłem okienko ping
+            '''
 
         if str(option["value"]) == "SHOW_VOTES":
             requests[token][SUMMARY_NAME] += str_react
@@ -198,6 +218,77 @@ def ping_users(client, users, message_link):
             ping_message += "\t<@" + user + ">\n"
 
     client.chat_postMessage(channel=ping_channel_name, text=ping_message)
+
+
+def open_ping_modal(client, trigger_id, users_to_ping, link_to_message):
+    initial_users = ""
+    count = 0
+    for user in users_to_ping:
+        if count > 0:
+            initial_users += ''',
+            '''
+        initial_users += '"' + str(user) + '"'
+        count += 1
+
+    view = '''{
+    "private_metadata": "''' + link_to_message + '''",
+	"title": {
+		"type": "plain_text",
+		"text": "PING - O nie! :scream:",
+		"emoji": true
+	},
+	"submit": {
+		"type": "plain_text",
+		"text": "Jazda z nimi",
+		"emoji": true
+	},
+	"type": "modal",
+	"callback_id": "''' + PING_MODAL_ID + '''",
+	"close": {
+		"type": "plain_text",
+		"text": "Jednak nie pinguje",
+		"emoji": true
+	},
+	"blocks": [
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Ktoś śmiał nie odpowiedzieć na tą wiadomość! Ostatnia szansa aby uratować tego osobnika bez RiGCZu przed *PINGIEM*!"
+			}
+		},
+		{
+            "block_id": "SELECT_TO_PING",
+			"type": "input",
+			"element": {
+				"type": "multi_conversations_select",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Nie każdy bohater nosi pelerynę",
+					"emoji": true
+				},
+                "filter": {
+                    "include": [
+                        "im"
+                    ],
+                    "exclude_bot_users": true
+                },
+				"initial_conversations": [''' \
+                                        + initial_users + \
+        '''],
+				"action_id": "USERS_LIST"
+			},
+			"label": {
+				"type": "plain_text",
+				"text": "Odznacz osobniki które zabierasz ze sobą na barkę i będą ocaleni",
+				"emoji": true
+			}
+		}
+	]
+}
+    '''
+    client.views_open(trigger_id=trigger_id, view=view)
+    print("Otwarto okienko ping")
 
 
 def open_modal(client, trigger_id, reactions):
@@ -327,6 +418,9 @@ def open_modal(client, trigger_id, reactions):
                             "emoji": true
                         },
                         "options": [''' + \
+        reactions_menu + \
+        '''],
+                        "initial_options": [''' + \
         reactions_menu + \
         ''']
                     }
