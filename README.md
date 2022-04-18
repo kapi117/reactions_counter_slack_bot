@@ -1,4 +1,4 @@
-# Slack Bot WRSS Milicja
+# Slack Bot WRSS Ping
 
 Bot na komunikator Slack służący do analizowania reakcji do danej wiadomości, czyli WRSS'owego "głosowania"
 
@@ -7,7 +7,7 @@ Bot na komunikator Slack służący do analizowania reakcji do danej wiadomości
 1. W górnym pasku wchodzimy w szczegóły kanału (klikamy na nazwę)
 2. Wchodzimy w zakładkę **Integrations**
 3. Klikamy **Add an app**
-4. W okienku znaleźć **WRSS Milicja**
+4. W okienku znaleźć **WRSS Ping**
 
 Można korzystać z bota na tym kanale
 

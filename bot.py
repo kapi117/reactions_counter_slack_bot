@@ -212,7 +212,6 @@ def send_dm_to_users(client, users_to_ping, link_to_message):
 
 
 def ping_users(client, users, message_link):
-    # TODO wyświetlaj okienko z osobami które będą spingowane i z możliwością ich odznaczenia
     ping_channel_name = "#ping"
     # oznaczamy kogoś za pomocą <@usr_id>
     if len(users) > 0:
