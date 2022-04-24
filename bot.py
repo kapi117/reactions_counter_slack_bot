@@ -3,21 +3,24 @@
     Mail: kacper.iwi@gmail.com
 '''
 
-from dotenv import load_dotenv
-import os
-from pathlib import Path
+#from dotenv import load_dotenv
+#import os
+#from pathlib import Path
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 
+SLACK_TOKEN_WRSS = "xoxb-1071504627507-3403137326451-ngHDcVQPfMDn51wM7ZbWedh4"
+SLACK_APP_TOKEN_WRSS = "xapp-1-A03BN1FUYNS-3402703288962-2416ebf92357df6cf868865fef171b89de1cd730eacaca595cbf07d7b37efcd4"
+
 '''
     Pobranie tokenów jako zmiennych środowiskowych z pliku .env znajdującego się w tym samym folderze
 '''
-env_path = Path('.') / '.env'
-load_dotenv(env_path)
+# env_path = Path('.') / '.env'
+# load_dotenv(env_path)
 
 # Initializes your app with your bot token and socket mode handler
-app = App(token=os.environ.get("SLACK_TOKEN_WRSS"))
+app = App(token=SLACK_TOKEN_WRSS)
 
 requests = {}
 
@@ -438,4 +441,4 @@ def open_modal(client, trigger_id, reactions):
 
 # Start your app
 if __name__ == "__main__":
-    SocketModeHandler(app, os.environ["SLACK_APP_TOKEN_WRSS"]).start()
+    SocketModeHandler(app, SLACK_APP_TOKEN_WRSS).start()
