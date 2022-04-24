@@ -12,6 +12,8 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 SLACK_TOKEN_WRSS = "xoxb-1071504627507-3403137326451-ngHDcVQPfMDn51wM7ZbWedh4"
 SLACK_APP_TOKEN_WRSS = "xapp-1-A03BN1FUYNS-3402703288962-2416ebf92357df6cf868865fef171b89de1cd730eacaca595cbf07d7b37efcd4"
+# SLACK_TOKEN = "xoxb-3339834357303-3356837307236-OMrKxeo1JfRLTlWN2beWBvEa"
+# SLACK_APP_TOKEN = "xapp-1-A03AT2R501X-3380653359681-cfbed6cbf8537cd7cec65c662f21e1c126987212a75315aca740385769e24276"
 
 '''
     Pobranie tokenów jako zmiennych środowiskowych z pliku .env znajdującego się w tym samym folderze
@@ -144,12 +146,13 @@ def handle_close(ack, body):
 @app.view(PING_MODAL_ID)
 def handle_ping_submission(client, ack, body, view):
     ack()
+    user_pinging = body["user"]["id"]
     link_to_message = view["private_metadata"]
     users_to_ping = []
     for user in view["state"]["values"]["SELECT_TO_PING"]["USERS_LIST"]["selected_conversations"]:
         users_to_ping.append(user)
 
-    ping_users(client, users_to_ping, link_to_message)
+    ping_users(client, users_to_ping, link_to_message, user_pinging)
     print("Zamknięto okienko pingu")
 
 
@@ -214,11 +217,11 @@ def send_dm_to_users(client, users_to_ping, link_to_message):
             channel=user, text=text)
 
 
-def ping_users(client, users, message_link):
+def ping_users(client, users, message_link, user_pinging):
     ping_channel_name = "#ping"
     # oznaczamy kogoś za pomocą <@usr_id>
     if len(users) > 0:
-        ping_message = "*Pan Policjant porządku pilnuje, wursowiczów na slacku wciąż pinguje*\nDelikwenci którzy nie odpowiedzieli na wiadomość: " + \
+        ping_message = "*Pan Policjant porządku pilnuje, wursowiczów na slacku wciąż pinguje* (ping na życzenie <@" + str(user_pinging) + ">)\nDelikwenci którzy nie odpowiedzieli na wiadomość: " + \
             str(message_link) + " to:\n"
         for user in users:
             ping_message += "\t<@" + user + ">\n"
