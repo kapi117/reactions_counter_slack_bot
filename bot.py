@@ -31,6 +31,7 @@ USERS_TO_PING_NAME = "users_to_ping"
 
 MODAL_ID = "COUNT_REACTIONS_MODAL"
 PING_MODAL_ID = "PING_USERS_MODAL"
+DM_MODAL_ID = "DM_USERS_MODAL"
 
 '''
     Message shortcut (czyli opcja przy kliknięciu ... przy wiadomości na kanale gdzie jest bot)
@@ -151,6 +152,19 @@ def handle_ping_submission(client, ack, body, view):
     print("Zamknięto okienko pingu")
 
 
+@app.view(DM_MODAL_ID)
+def handle_dm_submission(client, ack, body, view):
+    ack()
+    user_reminding = body["user"]["id"]
+    link_to_message = view["private_metadata"]
+    users_to_dm = []
+    for user in view["state"]["values"]["SELECT_TO_DM"]["USERS_LIST"]["selected_conversations"]:
+        users_to_dm.append(user)
+
+    send_dm_to_users(client, users_to_dm, link_to_message, user_reminding)
+    print("Zamknięto okienko DM")
+
+
 @app.view(MODAL_ID)
 def handle_submission(client, ack, body, view):
     token = body["token"]
@@ -189,10 +203,12 @@ def handle_submission(client, ack, body, view):
         if str(option["value"]) == "SHOW_NOT_REACTED":
             requests[token][SUMMARY_NAME] += str_not_react
         if str(option["value"]) == "SEND_DM_NOT_REACTED":
-            send_dm_to_users(
-                client, requests[token][USERS_TO_PING_NAME], requests[token][LINK_TO_MESSAGE_NAME])
+            open_dm_modal(
+                client, trigger_id, requests[token][USERS_TO_PING_NAME], requests[token][LINK_TO_MESSAGE_NAME])
+            # send_dm_to_users(
+            #    client, requests[token][USERS_TO_PING_NAME], requests[token][LINK_TO_MESSAGE_NAME])
             requests[token][SUMMARY_NAME] += '''
-                Wysłałem prywatne wiadomości do tych wszystkich, co nie odpowiedzieli :yum:
+                Otworzyłem okienko wysyłania wiadomości :yum:
             '''
 
     requests[token][RESPOND_NAME](
@@ -201,9 +217,9 @@ def handle_submission(client, ack, body, view):
     requests.pop(token)
 
 
-def send_dm_to_users(client, users_to_ping, link_to_message):
+def send_dm_to_users(client, users_to_ping, link_to_message, user_reminding):
     text = '''
-        Siemanko kochany WRSS'owiczu! :wave: Dostałem zadanie przypomnieć Ci żeby odpowiedzieć na wiadomość, która znajduje się tutaj: 
+        Siemanko kochany WRSS'owiczu! :wave: Dostałem zadanie od <@''' + user_reminding + '''> przypomnieć Ci żeby odpowiedzieć na wiadomość, która znajduje się tutaj: 
         ''' + link_to_message + '''
     Wiem, że pewnie masz niesłychanie dużo pracy, ale myślę, że pójdzie Ci to szybko :wink:
     A z tego co wiem, lepiej nie lądować na kanale *#ping* :woozy_face:'''
@@ -293,6 +309,77 @@ def open_ping_modal(client, trigger_id, users_to_ping, link_to_message):
     '''
     client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko ping")
+
+
+def open_dm_modal(client, trigger_id, users_to_dm, link_to_message):
+    initial_users = ""
+    count = 0
+    for user in users_to_dm:
+        if count > 0:
+            initial_users += ''',
+            '''
+        initial_users += '"' + str(user) + '"'
+        count += 1
+
+    view = '''{
+    "private_metadata": "''' + link_to_message + '''",
+	"title": {
+		"type": "plain_text",
+		"text": "Przypomnij biedakom",
+		"emoji": true
+	},
+	"submit": {
+		"type": "plain_text",
+		"text": "Kulturalna przypominajka",
+		"emoji": true
+	},
+	"type": "modal",
+	"callback_id": "''' + DM_MODAL_ID + '''",
+	"close": {
+		"type": "plain_text",
+		"text": "Wstydzę się",
+		"emoji": true
+	},
+	"blocks": [
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "*Jakiś zagubiony student śmiał nie odpowiedzieć na tą wiadomość! Wybierz komu uświadomić, że jego pamięć szwankuje :exploding_head:*"
+			}
+		},
+		{
+            "block_id": "SELECT_TO_DM",
+			"type": "input",
+			"element": {
+				"type": "multi_conversations_select",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Jesteś WRSS'owiczem na którego nie zasługujemy",
+					"emoji": true
+				},
+                "filter": {
+                    "include": [
+                        "im"
+                    ],
+                    "exclude_bot_users": true
+                },
+				"initial_conversations": [''' \
+                                        + initial_users + \
+        '''],
+				"action_id": "USERS_LIST"
+			},
+			"label": {
+				"type": "plain_text",
+				"text": "Odznacz osobniki którym dajesz spokój",
+				"emoji": true
+			}
+		}
+	]
+}
+    '''
+    client.views_open(trigger_id=trigger_id, view=view)
+    print("Otwarto okienko dm")
 
 
 def open_modal(client, trigger_id, reactions):
