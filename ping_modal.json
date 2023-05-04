@@ -1,0 +1,56 @@
+{
+    "private_metadata": "{{link_to_message}}",
+	"title": {
+		"type": "plain_text",
+		"text": "PING - O nie! :scream:",
+		"emoji": true
+	},
+	"submit": {
+		"type": "plain_text",
+		"text": "Jazda z nimi",
+		"emoji": true
+	},
+	"type": "modal",
+	"callback_id": "{{PING_MODAL_ID}}",
+	"close": {
+		"type": "plain_text",
+		"text": "Jednak nie pinguje",
+		"emoji": true
+	},
+	"blocks": [
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Ktoś śmiał nie odpowiedzieć na tą wiadomość! Ostatnia szansa aby uratować tego osobnika bez RiGCZu przed *PINGIEM*!"
+			}
+		},
+		{
+            "block_id": "SELECT_TO_PING",
+			"type": "input",
+			"element": {
+				"type": "multi_conversations_select",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Nie każdy bohater nosi pelerynę",
+					"emoji": true
+				},
+                "filter": {
+                    "include": [
+                        "im"
+                    ],
+                    "exclude_bot_users": true
+                },
+				"initial_conversations": [
+                                        {{initial_users}}
+            ],
+				"action_id": "USERS_LIST"
+			},
+			"label": {
+				"type": "plain_text",
+				"text": "Odznacz osobniki które zabierasz ze sobą na barkę i będą ocaleni",
+				"emoji": true
+			}
+		}
+	]
+}

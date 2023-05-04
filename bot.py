@@ -8,7 +8,8 @@ import os
 from pathlib import Path
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-
+import re
+import json
 
 '''
     Pobranie tokenów jako zmiennych środowiskowych z pliku .env znajdującego się w tym samym folderze
@@ -16,7 +17,6 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 env_path = Path('.') / '.env'
 load_dotenv(env_path)
 
-# Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_TOKEN_WRSS"))
 
 requests = {}
@@ -32,16 +32,6 @@ USERS_TO_PING_NAME = "users_to_ping"
 MODAL_ID = "COUNT_REACTIONS_MODAL"
 PING_MODAL_ID = "PING_USERS_MODAL"
 DM_MODAL_ID = "DM_USERS_MODAL"
-
-'''
-    Message shortcut (czyli opcja przy kliknięciu ... przy wiadomości na kanale gdzie jest bot)
-    Wywoływany przez callback "len"
-    client - klient Slacka do API
-    ack - funkcja którą trzeba wywołać żeby Slack wiedział że dostaliśmy wezwanie
-    respond - funkcja za pomocą której można odpowiadać w miejscu wywołania bota (dodatkowo można skorzystać z 
-        typu ephemeral żeby wiadomość była wyświetlana tylko jednej osobie)
-    payload - wszystkie informacje na temat wiadomości i wywołania 
-'''
 
 
 def show_reactions(reactions_chosen, members, reactions):
@@ -250,63 +240,10 @@ def open_ping_modal(client, trigger_id, users_to_ping, link_to_message):
         initial_users += '"' + str(user) + '"'
         count += 1
 
-    view = '''{
-    "private_metadata": "''' + link_to_message + '''",
-	"title": {
-		"type": "plain_text",
-		"text": "PING - O nie! :scream:",
-		"emoji": true
-	},
-	"submit": {
-		"type": "plain_text",
-		"text": "Jazda z nimi",
-		"emoji": true
-	},
-	"type": "modal",
-	"callback_id": "''' + PING_MODAL_ID + '''",
-	"close": {
-		"type": "plain_text",
-		"text": "Jednak nie pinguje",
-		"emoji": true
-	},
-	"blocks": [
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "Ktoś śmiał nie odpowiedzieć na tą wiadomość! Ostatnia szansa aby uratować tego osobnika bez RiGCZu przed *PINGIEM*!"
-			}
-		},
-		{
-            "block_id": "SELECT_TO_PING",
-			"type": "input",
-			"element": {
-				"type": "multi_conversations_select",
-				"placeholder": {
-					"type": "plain_text",
-					"text": "Nie każdy bohater nosi pelerynę",
-					"emoji": true
-				},
-                "filter": {
-                    "include": [
-                        "im"
-                    ],
-                    "exclude_bot_users": true
-                },
-				"initial_conversations": [''' \
-                                        + initial_users + \
-        '''],
-				"action_id": "USERS_LIST"
-			},
-			"label": {
-				"type": "plain_text",
-				"text": "Odznacz osobniki które zabierasz ze sobą na barkę i będą ocaleni",
-				"emoji": true
-			}
-		}
-	]
-}
-    '''
+    with open("ping_modal.json", "r") as modal:
+        view = modal.read().replace("{{initial_users}}", initial_users).replace("{{link_to_message}}", link_to_message)\
+            .replace("{{PING_MODAL_ID}}", PING_MODAL_ID)
+        
     client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko ping")
 
@@ -399,129 +336,27 @@ def open_modal(client, trigger_id, reactions):
                             }'''
         count += 1
 
-    view = '''
-        {
-            "type": "modal",
-            "notify_on_close": true,
-            "callback_id": "''' + MODAL_ID + '''",
-            "submit": {
-                "type": "plain_text",
-                "text": "Do podawczego",
-                "emoji": true
-            },
-            "close": {
-                "type": "plain_text",
-                "text": "Taktyczny odwrót",
-                "emoji": true
-            },
-            "title": {
-                "type": "plain_text",
-                "text": "Policz reakcje :wave:",
-                "emoji": true
-            },
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "Witaj disco robaczku :wave: \nPomogę Ci żebyś miał_ więcej czasu na flanki :baby_bottle:",
-                        "emoji": true
-                    }
-                },
-                {
-                    "type": "divider"
-                },
-                {
-                    "type": "section",
-                    "block_id": "SELECT_OPTIONS",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Jakie sosiwo wariacie?*"
-                    },
-                    "accessory": {
-                        "type": "checkboxes",
-                        "options": [
-                            {
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": "Wyświetl głosy"
-                                },
-                                "description": {
-                                    "type": "mrkdwn",
-                                    "text": "Lista osób które zagłosowały"
-                                },
-                                "value": "SHOW_VOTES"
-                            },
-                            {
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": "Wyświetl gamoni"
-                                },
-                                "description": {
-                                    "type": "mrkdwn",
-                                    "text": "Lista patafianów którzy nie zareagowali (w żaden sposób)"
-                                },
-                                "value": "SHOW_NOT_REACTED"
-                            },
-                            {
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": "Przypomnij matołkom"
-                                },
-                                "description": {
-                                    "type": "mrkdwn",
-                                    "text": "Wyślij prywatną wiadomość głuptasom co zapomnieli"
-                                },
-                                "value": "SEND_DM_NOT_REACTED"
-                            },
-                            {
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": ":female-police-officer::rotating_light: *PING* :rotating_light::male-police-officer:"
-                                },
-                                "description": {
-                                    "type": "mrkdwn",
-                                    "text": "Miarka się przebrała"
-                                },
-                                "value": "PING"
-                            }
-                        ],
-                        "action_id": "checkboxes-action"
-                    }
-                },
-                {
-                    "type": "divider"
-                },
-                {
-                    "type": "input",
-                    "label": {
-                        "type": "plain_text",
-                        "text": "Jakie reakcje chcesz zliczyć (dotyczy opcji wyświetl głosy)?",
-                        "emoji": true
-                    },
-                    "block_id": "SELECT_REACTIONS",
-                    "element": {
-                        "action_id": "REACTIONS_LIST",
-                        "type": "multi_static_select",
-                        "placeholder": {
-                            "type": "plain_text",
-                            "text": "Wszystkie reakcje",
-                            "emoji": true
-                        },
-                        "options": [''' + \
-        reactions_menu + \
-        '''],
-                        "initial_options": [''' + \
-        reactions_menu + \
-        ''']
-                    }
-                }
-            ]
-        }
-    '''
+    replacements = {"{{MODAL_ID}}": f"{MODAL_ID}", 
+                    "{{reactions_menu}}": f"[{reactions_menu}]"}
+
+    view = load_modal("main_modal.json", replacements)
 
     client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko")
+
+def load_modal(modal_json_filename, repl_in):
+    result_modal = ""
+    
+    with open(modal_json_filename, "r") as modal_file:
+        modal_text = modal_file.read()
+
+        replacements = dict((re.escape(k), v) for k, v in repl_in.items())
+
+        pattern = re.compile("|".join(replacements.keys()))
+
+        result_modal = pattern.sub(lambda m: replacements[re.escape(m.group(0))], modal_text)
+
+    return result_modal
 
 
 # Start your app

@@ -1,0 +1,118 @@
+{
+    "type": "modal",
+    "notify_on_close": true,
+    "callback_id": "{{MODAL_ID}}",
+    "submit": {
+        "type": "plain_text",
+        "text": "Do podawczego",
+        "emoji": true
+    },
+    "close": {
+        "type": "plain_text",
+        "text": "Taktyczny odwrót",
+        "emoji": true
+    },
+    "title": {
+        "type": "plain_text",
+        "text": "Policz reakcje :wave:",
+        "emoji": true
+    },
+    "blocks": [
+        {
+            "type": "section",
+            "text": {
+                "type": "plain_text",
+                "text": "Witaj disco robaczku :wave: \nPomogę Ci żebyś miał_ więcej czasu na flanki :baby_bottle:",
+                "emoji": true
+            }
+        },
+        {
+            "type": "divider"
+        },
+        {
+            "type": "section",
+            "block_id": "SELECT_OPTIONS",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*Jakie sosiwo wariacie?*"
+            },
+            "accessory": {
+                "type": "checkboxes",
+                "options": [
+                    {
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "Wyświetl głosy"
+                        },
+                        "description": {
+                            "type": "mrkdwn",
+                            "text": "Lista osób które zagłosowały"
+                        },
+                        "value": "SHOW_VOTES"
+                    },
+                    {
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "Wyświetl gamoni"
+                        },
+                        "description": {
+                            "type": "mrkdwn",
+                            "text": "Lista patafianów którzy nie zareagowali (w żaden sposób)"
+                        },
+                        "value": "SHOW_NOT_REACTED"
+                    },
+                    {
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "Przypomnij matołkom"
+                        },
+                        "description": {
+                            "type": "mrkdwn",
+                            "text": "Wyślij prywatną wiadomość głuptasom co zapomnieli"
+                        },
+                        "value": "SEND_DM_NOT_REACTED"
+                    },
+                    {
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": ":female-police-officer::rotating_light: *PING* :rotating_light::male-police-officer:"
+                        },
+                        "description": {
+                            "type": "mrkdwn",
+                            "text": "Miarka się przebrała"
+                        },
+                        "value": "PING"
+                    }
+                ],
+                "action_id": "checkboxes-action"
+            }
+        },
+        {
+            "type": "divider"
+        },
+        {
+            "type": "input",
+            "label": {
+                "type": "plain_text",
+                "text": "Jakie reakcje chcesz zliczyć (dotyczy opcji wyświetl głosy)?",
+                "emoji": true
+            },
+            "block_id": "SELECT_REACTIONS",
+            "element": {
+                "action_id": "REACTIONS_LIST",
+                "type": "multi_static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Wszystkie reakcje",
+                    "emoji": true
+                },
+                "options": [
+                    {{reactions_menu}}
+                ],
+                "initial_options": [
+                    {{reactions_menu}}
+                ]
+            }
+        }
+    ]
+}
