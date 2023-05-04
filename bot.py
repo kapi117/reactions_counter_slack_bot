@@ -26,6 +26,48 @@ SUMMARY_NAME = "summary"
 MEMBERS_NAME = "members"
 USERS_TO_PING_NAME = "users_to_ping"
 
+class RequestMetadata:
+    def __init__(self, link_to_message, reactions, summary, members, users_to_ping):
+        self.link_to_message = link_to_message
+        self.reactions = reactions
+        self.summary = summary
+        self.members = members
+        self.users_to_ping = users_to_ping
+
+    @staticmethod
+    def from_payload(client, payload):
+        link_to_message = client.chat_getPermalink(
+            channel=payload["channel"]["id"], message_ts=payload["message_ts"])["permalink"]
+        
+        try:
+            reactions_response = client.reactions_get(
+                timestamp=payload["message_ts"], full=True, channel=payload["channel"]["id"])
+            reactions = reactions_response["message"]["reactions"]
+        except KeyError:
+            reactions = []
+
+        channel_members = client.conversations_members(channel=payload["channel"]["id"])["members"]
+
+        summary = "*Podsumowanie reakcji na wiadomość " + \
+            str(link_to_message) + " *\n"
+        
+        users_to_ping = []
+
+        return RequestMetadata(link_to_message, reactions, summary, channel_members, users_to_ping)
+        
+        
+
+@app.shortcut("analyse_reaction")
+def shortcut_count(ack, respond, payload):
+    # koniecznie odpowiadamy że otrzymaliśmy
+    ack()
+
+    trigger_id = payload["trigger_id"]
+
+    req_meta = RequestMetadata.from_payload(app.client, payload)
+
+    open_modal(trigger_id, req_meta.reactions)
+
 
 
 def show_reactions(reactions_chosen, members, reactions):
@@ -66,54 +108,6 @@ def show_not_reacted(members, users_to_ping, client):
     return summary
 
 
-@app.shortcut("analyse_reaction")
-def shortcut_count(client, ack, respond, payload):
-    # odpowiadamy że otrzymaliśmy
-    ack()
-    # print(payload)
-    global requests
-
-    token = payload["token"]
-
-    requests[token] = {}
-    requests[token][RESPOND_NAME] = respond
-    # W celu charakteryzacji wiadomości
-    timestamp = payload["message_ts"]
-    # ID kanału
-    channel_id = payload["channel"]["id"]
-    # Link do wiadomości
-    requests[token][LINK_TO_MESSAGE_NAME] = client.chat_getPermalink(
-        channel=channel_id, message_ts=timestamp)["permalink"]
-
-    # id wywołania
-    trigger_id = payload["trigger_id"]
-    # print(payload)
-    try:
-        # pobieranie reakcji z tej wiadomości
-        reactions_response = client.reactions_get(
-            timestamp=timestamp, full=True, channel=channel_id)
-        requests[token][REACTIONS_NAME] = reactions_response["message"]["reactions"]
-    except KeyError:
-        respond(response_type="ephemeral", text=(
-            "Błąd - brak reakcji na " + requests[token][LINK_TO_MESSAGE_NAME]))
-        requests.pop(token)
-        return None
-
-    # pobranie listy użytkowników kanału
-    requests[token][MEMBERS_NAME] = client.conversations_members(channel=channel_id)[
-        "members"]
-
-    open_modal(client, trigger_id, requests[token][REACTIONS_NAME])
-
-    requests[token][SUMMARY_NAME] = "*Podsumowanie reakcji na wiadomość " + \
-        str(requests[token][LINK_TO_MESSAGE_NAME]) + " *\n"
-
-    requests[token][USERS_TO_PING_NAME] = []
-
-    # wysyłamy wiadomość widoczna tylko dla tej osoby
-
-    # ping_users(client, users_to_ping, link_to_message)
-
 
 @app.view_closed(STRINGS_UTILS["modals"]["main"]["id"])
 def handle_close(ack, body):
@@ -124,16 +118,20 @@ def handle_close(ack, body):
 
 
 @app.view(STRINGS_UTILS["modals"]["ping"]["id"])
-def handle_ping_submission(client, ack, body, view):
+def handle_ping_submission(ack, body, view):
     ack()
     user_pinging = body["user"]["id"]
     link_to_message = view["private_metadata"]
+    users_to_ping = get_users_to_ping_from_view(view)
+
+    ping_users(users_to_ping, link_to_message, user_pinging)
+    print("Zamknięto okienko pingu")
+
+def get_users_to_ping_from_view(view):
     users_to_ping = []
     for user in view["state"]["values"]["SELECT_TO_PING"]["USERS_LIST"]["selected_conversations"]:
         users_to_ping.append(user)
-
-    ping_users(client, users_to_ping, link_to_message, user_pinging)
-    print("Zamknięto okienko pingu")
+    return users_to_ping
 
 
 @app.view(STRINGS_UTILS["modals"]["dm"]["id"])
@@ -212,7 +210,7 @@ def send_dm_to_users(client, users_to_ping, link_to_message, user_reminding):
             channel=user, text=text)
 
 
-def ping_users(client, users, message_link, user_pinging):
+def ping_users(users, message_link, user_pinging):
     ping_channel_name = "#ping"
     # oznaczamy kogoś za pomocą <@usr_id>
     if len(users) > 0:
@@ -221,10 +219,10 @@ def ping_users(client, users, message_link, user_pinging):
         for user in users:
             ping_message += "\t<@" + user + ">\n"
 
-    client.chat_postMessage(channel=ping_channel_name, text=ping_message)
+    app.client.chat_postMessage(channel=ping_channel_name, text=ping_message)
 
 
-def open_ping_modal(client, trigger_id, users_to_ping, link_to_message):
+def open_ping_modal(trigger_id, users_to_ping, link_to_message):
     initial_users = ""
     count = 0
     for user in users_to_ping:
@@ -237,11 +235,11 @@ def open_ping_modal(client, trigger_id, users_to_ping, link_to_message):
     with open("ping_modal.json", "r") as modal:
         view = modal.read().replace("{{initial_users}}", initial_users).replace("{{link_to_message}}", link_to_message)
         
-    client.views_open(trigger_id=trigger_id, view=view)
+    app.client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko ping")
 
 
-def open_dm_modal(client, trigger_id, users_to_dm, link_to_message):
+def open_dm_modal(trigger_id, users_to_dm, link_to_message):
     initial_users = ""
     count = 0
     for user in users_to_dm:
@@ -256,11 +254,21 @@ def open_dm_modal(client, trigger_id, users_to_dm, link_to_message):
     
     view = load_modal("dm_modal.json", replacements)
 
-    client.views_open(trigger_id=trigger_id, view=view)
+    app.client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko dm")
 
 
-def open_modal(client, trigger_id, reactions):
+def open_modal(trigger_id, reactions):
+    reactions_menu = create_reactions_menu(reactions)
+
+    replacements = {"{{reactions_menu}}": f"[{reactions_menu}]"}
+
+    view = load_modal("main_modal.json", replacements)
+
+    app.client.views_open(trigger_id=trigger_id, view=view)
+    print("Otwarto okienko")
+
+def create_reactions_menu(reactions):
     reactions_menu = ""
     count = 0
     for reaction_type in reactions:
@@ -277,12 +285,7 @@ def open_modal(client, trigger_id, reactions):
                             }'''
         count += 1
 
-    replacements = {"{{reactions_menu}}": f"[{reactions_menu}]"}
-
-    view = load_modal("main_modal.json", replacements)
-
-    client.views_open(trigger_id=trigger_id, view=view)
-    print("Otwarto okienko")
+    return reactions_menu
 
 def load_modal(modal_json_filename, repl_in):
     result_modal = ""
