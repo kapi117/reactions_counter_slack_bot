@@ -3,11 +3,13 @@
     Mail: kacper.iwi@gmail.com
 '''
 
-from pathlib import Path
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import re
 import json
+
+# my modules
+from utils.requests import RequestMetadata
 
 with open('./assets/strings/user_strings.json', 'r') as f:
     STRINGS_USER = json.load(f)
@@ -26,36 +28,6 @@ SUMMARY_NAME = "summary"
 MEMBERS_NAME = "members"
 USERS_TO_PING_NAME = "users_to_ping"
 
-class RequestMetadata:
-    def __init__(self, link_to_message, reactions, summary, members, users_to_ping):
-        self.link_to_message = link_to_message
-        self.reactions = reactions
-        self.summary = summary
-        self.members = members
-        self.users_to_ping = users_to_ping
-
-    @staticmethod
-    def from_payload(client, payload):
-        link_to_message = client.chat_getPermalink(
-            channel=payload["channel"]["id"], message_ts=payload["message_ts"])["permalink"]
-        
-        try:
-            reactions_response = client.reactions_get(
-                timestamp=payload["message_ts"], full=True, channel=payload["channel"]["id"])
-            reactions = reactions_response["message"]["reactions"]
-        except KeyError:
-            reactions = []
-
-        channel_members = client.conversations_members(channel=payload["channel"]["id"])["members"]
-
-        summary = "*Podsumowanie reakcji na wiadomość " + \
-            str(link_to_message) + " *\n"
-        
-        users_to_ping = []
-
-        return RequestMetadata(link_to_message, reactions, summary, channel_members, users_to_ping)
-        
-        
 
 @app.shortcut("analyse_reaction")
 def shortcut_count(ack, respond, payload):
@@ -66,9 +38,17 @@ def shortcut_count(ack, respond, payload):
 
     req_meta = RequestMetadata.from_payload(app.client, payload)
 
-    open_modal(trigger_id, req_meta.reactions)
+    open_main(trigger_id, req_meta)
 
+def open_main(trigger_id, req_meta):
+    reactions_menu = create_reactions_menu(req_meta.reactions)
 
+    replacements = {"{{reactions_menu}}": f"[{reactions_menu}]"}
+
+    view = load_modal(STRINGS_UTILS["modals"]["main"]["file"], replacements, req_meta)
+
+    app.client.views_open(trigger_id=trigger_id, view=view)
+    print("Otwarto okienko")
 
 def show_reactions(reactions_chosen, members, reactions):
     summary = ""
@@ -258,15 +238,6 @@ def open_dm_modal(trigger_id, users_to_dm, link_to_message):
     print("Otwarto okienko dm")
 
 
-def open_modal(trigger_id, reactions):
-    reactions_menu = create_reactions_menu(reactions)
-
-    replacements = {"{{reactions_menu}}": f"[{reactions_menu}]"}
-
-    view = load_modal("main_modal.json", replacements)
-
-    app.client.views_open(trigger_id=trigger_id, view=view)
-    print("Otwarto okienko")
 
 def create_reactions_menu(reactions):
     reactions_menu = ""
@@ -287,7 +258,7 @@ def create_reactions_menu(reactions):
 
     return reactions_menu
 
-def load_modal(modal_json_filename, repl_in):
+def load_modal(modal_json_filename, repl_in, req_meta):
     result_modal = ""
     
     with open(modal_json_filename, "r") as modal_file:
@@ -298,6 +269,10 @@ def load_modal(modal_json_filename, repl_in):
         pattern = re.compile("|".join(replacements.keys()))
 
         result_modal = pattern.sub(lambda m: replacements[re.escape(m.group(0))], modal_text)
+
+    result_modal_json = json.loads(result_modal)
+    result_modal_json["private_metadata"] = req_meta
+    result_modal = json.dumps(result_modal_json)
 
     return result_modal
 
