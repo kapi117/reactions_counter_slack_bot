@@ -27,10 +27,6 @@ MEMBERS_NAME = "members"
 USERS_TO_PING_NAME = "users_to_ping"
 
 
-MODAL_ID = "COUNT_REACTIONS_MODAL"
-PING_MODAL_ID = "PING_USERS_MODAL"
-DM_MODAL_ID = "DM_USERS_MODAL"
-
 
 def show_reactions(reactions_chosen, members, reactions):
     summary = ""
@@ -119,7 +115,7 @@ def shortcut_count(client, ack, respond, payload):
     # ping_users(client, users_to_ping, link_to_message)
 
 
-@app.view_closed(MODAL_ID)
+@app.view_closed(STRINGS_UTILS["modals"]["main"]["id"])
 def handle_close(ack, body):
     token = body["token"]
     requests.pop(token)
@@ -127,7 +123,7 @@ def handle_close(ack, body):
     print("Zamknięto okienko")
 
 
-@app.view(PING_MODAL_ID)
+@app.view(STRINGS_UTILS["modals"]["ping"]["id"])
 def handle_ping_submission(client, ack, body, view):
     ack()
     user_pinging = body["user"]["id"]
@@ -140,7 +136,7 @@ def handle_ping_submission(client, ack, body, view):
     print("Zamknięto okienko pingu")
 
 
-@app.view(DM_MODAL_ID)
+@app.view(STRINGS_UTILS["modals"]["dm"]["id"])
 def handle_dm_submission(client, ack, body, view):
     ack()
     user_reminding = body["user"]["id"]
@@ -153,7 +149,7 @@ def handle_dm_submission(client, ack, body, view):
     print("Zamknięto okienko DM")
 
 
-@app.view(MODAL_ID)
+@app.view(STRINGS_UTILS["modals"]["main"]["id"])
 def handle_submission(client, ack, body, view):
     token = body["token"]
     trigger_id = body["trigger_id"]
@@ -239,8 +235,7 @@ def open_ping_modal(client, trigger_id, users_to_ping, link_to_message):
         count += 1
 
     with open("ping_modal.json", "r") as modal:
-        view = modal.read().replace("{{initial_users}}", initial_users).replace("{{link_to_message}}", link_to_message)\
-            .replace("{{PING_MODAL_ID}}", PING_MODAL_ID)
+        view = modal.read().replace("{{initial_users}}", initial_users).replace("{{link_to_message}}", link_to_message)
         
     client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko ping")
@@ -257,7 +252,6 @@ def open_dm_modal(client, trigger_id, users_to_dm, link_to_message):
         count += 1
 
     replacements = {"{{link_to_message}}": f"{link_to_message}",
-                    "{{DM_MODAL_ID}}": f"{DM_MODAL_ID}",
                     "{{initial_users}}": f"{initial_users}"}
     
     view = load_modal("dm_modal.json", replacements)
@@ -283,8 +277,7 @@ def open_modal(client, trigger_id, reactions):
                             }'''
         count += 1
 
-    replacements = {"{{MODAL_ID}}": f"{MODAL_ID}", 
-                    "{{reactions_menu}}": f"[{reactions_menu}]"}
+    replacements = {"{{reactions_menu}}": f"[{reactions_menu}]"}
 
     view = load_modal("main_modal.json", replacements)
 

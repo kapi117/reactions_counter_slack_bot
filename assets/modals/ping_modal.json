@@ -11,7 +11,7 @@
 		"emoji": true
 	},
 	"type": "modal",
-	"callback_id": "{{PING_MODAL_ID}}",
+	"callback_id": "PING_USERS_MODAL",
 	"close": {
 		"type": "plain_text",
 		"text": "Jednak nie pinguje",
@@ -42,8 +42,8 @@
                     "exclude_bot_users": true
                 },
 				"initial_conversations": [
-                                        {{initial_users}}
-            ],
+                    {{initial_users}}
+            	],
 				"action_id": "USERS_LIST"
 			},
 			"label": {

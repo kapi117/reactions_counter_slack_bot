@@ -1,7 +1,7 @@
 {
     "type": "modal",
     "notify_on_close": true,
-    "callback_id": "{{MODAL_ID}}",
+    "callback_id": "MAIN_MODAL",
     "submit": {
         "type": "plain_text",
         "text": "Do podawczego",

@@ -1,0 +1,25 @@
+{
+    "modals": {
+        "main": {
+            "file": "./assets/modals/main_modal.json",
+            "id": "MAIN_MODAL",
+            "tags_to_replace": [
+                "{{reactions_menu}}" 
+            ]
+        },
+        "dm": {
+            "file": "./assets/modals/dm_modal.json",
+            "id": "DM_USERS_MODAL",
+            "tags_to_replace": [
+                "{{link_to_message}}", "{{initial_users}}" 
+            ]
+        },
+        "ping": {
+            "file": "./assets/modals/ping_modal.json",
+            "id": "PING_USERS_MODAL",
+            "tags_to_replace": [
+                "{{link_to_message}}", "{{initial_users}}" 
+            ]
+        }
+    }
+}

@@ -11,7 +11,7 @@
 		"emoji": true
 	},
 	"type": "modal",
-	"callback_id": "{{DM_MODAL_ID}}",
+	"callback_id": "DM_USERS_MODAL",
 	"close": {
 		"type": "plain_text",
 		"text": "Wstydzę się",
