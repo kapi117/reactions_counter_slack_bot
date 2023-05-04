@@ -258,63 +258,12 @@ def open_dm_modal(client, trigger_id, users_to_dm, link_to_message):
         initial_users += '"' + str(user) + '"'
         count += 1
 
-    view = '''{
-    "private_metadata": "''' + link_to_message + '''",
-	"title": {
-		"type": "plain_text",
-		"text": "Przypomnij biedakom",
-		"emoji": true
-	},
-	"submit": {
-		"type": "plain_text",
-		"text": "Kulturalna przypominajka",
-		"emoji": true
-	},
-	"type": "modal",
-	"callback_id": "''' + DM_MODAL_ID + '''",
-	"close": {
-		"type": "plain_text",
-		"text": "Wstydzę się",
-		"emoji": true
-	},
-	"blocks": [
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "*Jakiś zagubiony student śmiał nie odpowiedzieć na tą wiadomość! Wybierz komu uświadomić, że jego pamięć szwankuje :exploding_head:*"
-			}
-		},
-		{
-            "block_id": "SELECT_TO_DM",
-			"type": "input",
-			"element": {
-				"type": "multi_conversations_select",
-				"placeholder": {
-					"type": "plain_text",
-					"text": "Jesteś WRSS'owiczem na którego nie zasługujemy",
-					"emoji": true
-				},
-                "filter": {
-                    "include": [
-                        "im"
-                    ],
-                    "exclude_bot_users": true
-                },
-				"initial_conversations": [''' \
-                                        + initial_users + \
-        '''],
-				"action_id": "USERS_LIST"
-			},
-			"label": {
-				"type": "plain_text",
-				"text": "Odznacz osobniki którym dajesz spokój",
-				"emoji": true
-			}
-		}
-	]
-}
-    '''
+    replacements = {"{{link_to_message}}": f"{link_to_message}",
+                    "{{DM_MODAL_ID}}": f"{DM_MODAL_ID}",
+                    "{{initial_users}}": f"{initial_users}"}
+    
+    view = load_modal("dm_modal.json", replacements)
+
     client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko dm")
 

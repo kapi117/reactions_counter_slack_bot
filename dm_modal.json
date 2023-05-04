@@ -1,0 +1,56 @@
+{
+    "private_metadata": "{{link_to_message}}",
+	"title": {
+		"type": "plain_text",
+		"text": "Przypomnij biedakom",
+		"emoji": true
+	},
+	"submit": {
+		"type": "plain_text",
+		"text": "Kulturalna przypominajka",
+		"emoji": true
+	},
+	"type": "modal",
+	"callback_id": "{{DM_MODAL_ID}}",
+	"close": {
+		"type": "plain_text",
+		"text": "Wstydzę się",
+		"emoji": true
+	},
+	"blocks": [
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "*Jakiś zagubiony student śmiał nie odpowiedzieć na tą wiadomość! Wybierz komu uświadomić, że jego pamięć szwankuje :exploding_head:*"
+			}
+		},
+		{
+            "block_id": "SELECT_TO_DM",
+			"type": "input",
+			"element": {
+				"type": "multi_conversations_select",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Jesteś WRSS'owiczem na którego nie zasługujemy",
+					"emoji": true
+				},
+                "filter": {
+                    "include": [
+                        "im"
+                    ],
+                    "exclude_bot_users": true
+                },
+				"initial_conversations": [
+                    {{initial_users}}
+                ],
+				"action_id": "USERS_LIST"
+			},
+			"label": {
+				"type": "plain_text",
+				"text": "Odznacz osobniki którym dajesz spokój",
+				"emoji": true
+			}
+		}
+	]
+}
