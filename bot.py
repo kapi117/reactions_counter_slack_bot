@@ -3,21 +3,19 @@
     Mail: kacper.iwi@gmail.com
 '''
 
-from dotenv import load_dotenv
-import os
 from pathlib import Path
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import re
 import json
 
-'''
-    Pobranie tokenów jako zmiennych środowiskowych z pliku .env znajdującego się w tym samym folderze
-'''
-env_path = Path('.') / '.env'
-load_dotenv(env_path)
+with open('./assets/strings/user_strings.json', 'r') as f:
+    STRINGS_USER = json.load(f)
 
-app = App(token=os.environ.get("SLACK_TOKEN_WRSS"))
+with open('./assets/strings/utils_strings.json', 'r') as f:
+    STRINGS_UTILS = json.load(f)
+
+app = App(token=STRINGS_USER["general"]["bot_token"])
 
 requests = {}
 
@@ -310,4 +308,4 @@ def load_modal(modal_json_filename, repl_in):
 
 # Start your app
 if __name__ == "__main__":
-    SocketModeHandler(app, os.environ["SLACK_APP_TOKEN_WRSS"]).start()
+    SocketModeHandler(app, STRINGS_USER["general"]["app_token"]).start()
