@@ -28,16 +28,15 @@ SUMMARY_NAME = "summary"
 MEMBERS_NAME = "members"
 USERS_TO_PING_NAME = "users_to_ping"
 
-
+### SHORTCUT REQUEST ###
 @app.shortcut("analyse_reaction")
 def shortcut_count(ack, respond, payload):
     # koniecznie odpowiadamy że otrzymaliśmy
     ack()
 
-    trigger_id = payload["trigger_id"]
-
     req_meta = RequestMetadata.from_payload(app.client, payload)
 
+    trigger_id = payload["trigger_id"]
     open_main(trigger_id, req_meta)
 
 def open_main(trigger_id, req_meta):
@@ -49,6 +48,56 @@ def open_main(trigger_id, req_meta):
 
     app.client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko")
+
+def create_reactions_menu(reactions):
+    reactions_menu = ""
+    count = 0
+    for reaction_type in reactions:
+        if(count > 0):
+            reactions_menu += ''',
+            '''
+        reactions_menu += get_reaction_entry(reaction_type['name'])
+        count += 1
+
+    return reactions_menu
+
+def get_reaction_entry(reaction_name):
+    entry = ''' {
+            "text": {
+                "type": "plain_text",
+                "text": ":''' + reaction_name + ''': ''' + reaction_name + '''",
+                "emoji": true
+            },
+            "value": "''' + reaction_name + '''"
+        }'''
+    return entry
+    
+def load_modal(modal_json_filename, repl_in, req_meta):
+    result_modal = ""
+    
+    with open(modal_json_filename, "r") as modal_file:
+        modal_text = modal_file.read()
+
+        result_modal = replace_tags_in_text(modal_text, repl_in)
+
+    result_modal = load_private_metadata_to_modal_text(result_modal, req_meta.to_json())
+
+    return result_modal
+
+def replace_tags_in_text(text, repl_dict):
+    replacements = dict((re.escape(k), v) for k, v in repl_dict.items())
+    pattern = re.compile("|".join(replacements.keys()))
+    result_text = pattern.sub(lambda m: replacements[re.escape(m.group(0))], text)
+    return result_text
+
+def load_private_metadata_to_modal_text(modal_text, req_meta):
+    modal_json = json.loads(modal_text)
+    modal_json["private_metadata"] = req_meta
+    modal_text = json.dumps(modal_json)
+    return modal_text
+
+
+
 
 def show_reactions(reactions_chosen, members, reactions):
     summary = ""
@@ -239,42 +288,8 @@ def open_dm_modal(trigger_id, users_to_dm, link_to_message):
 
 
 
-def create_reactions_menu(reactions):
-    reactions_menu = ""
-    count = 0
-    for reaction_type in reactions:
-        if(count > 0):
-            reactions_menu += ''',
-            '''
-        reactions_menu += '''{
-                                "text": {
-                                    "type": "plain_text",
-                                    "text": ":''' + reaction_type["name"] + ''': ''' + reaction_type["name"] + '''",
-                                    "emoji": true
-                                },
-                                "value": "''' + reaction_type["name"] + '''"
-                            }'''
-        count += 1
 
-    return reactions_menu
 
-def load_modal(modal_json_filename, repl_in, req_meta):
-    result_modal = ""
-    
-    with open(modal_json_filename, "r") as modal_file:
-        modal_text = modal_file.read()
-
-        replacements = dict((re.escape(k), v) for k, v in repl_in.items())
-
-        pattern = re.compile("|".join(replacements.keys()))
-
-        result_modal = pattern.sub(lambda m: replacements[re.escape(m.group(0))], modal_text)
-
-    result_modal_json = json.loads(result_modal)
-    result_modal_json["private_metadata"] = req_meta
-    result_modal = json.dumps(result_modal_json)
-
-    return result_modal
 
 
 # Start your app
