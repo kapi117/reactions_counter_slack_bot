@@ -23,7 +23,7 @@ class RequestMetadata:
         summary = "*Podsumowanie reakcji na wiadomość " + \
             str(link_to_message) + " *\n"
         
-        users_to_ping = []
+        users_to_ping = set([])
 
         return RequestMetadata(link_to_message, reactions, summary, channel_members, users_to_ping)
     

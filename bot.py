@@ -97,54 +97,126 @@ def load_private_metadata_to_modal_text(modal_text, req_meta):
     return modal_text
 
 
+### MAIN SUBMISSION ###
+@app.view(STRINGS_UTILS["modals"]["main"]["id"])
+def handle_submission(ack, body, view, respond):
+    try:
+        metadata = get_private_metadata_from_view(view)
+        req_meta = RequestMetadata.from_dict(metadata)
 
+    except KeyError as e:
+        errors = {}
+        errors["metadata_not_found"] = str(e)
+        ack(response_action="errors", errors=errors)
+        return None
 
-def show_reactions(reactions_chosen, members, reactions):
-    summary = ""
+    ack()
+
+    chosen_reactions = get_reactions_chosen_in_main(view)
+
+    req_meta.users_to_ping = get_users_not_reacted_to_any_reactions(req_meta, chosen_reactions)
+
+    chosen_actions = get_actions_chosen_from_view(view)
+
+    if "SHOW_VOTES" in chosen_actions:
+        reacted_summary = summary_reactions(chosen_reactions, req_meta)
+        req_meta.summary += reacted_summary
+
+    if "SHOW_NOT_REACTED" in chosen_actions:
+        not_reacted_summary = summary_not_reacted(req_meta)
+        req_meta.summary += not_reacted_summary
+
+    if "PING" in chosen_actions:
+        trigger_id = body["trigger_id"]
+        open_ping_modal(trigger_id, req_meta)
+
+        req_meta.summary += '''\nOtworzyłem okienko ping\n'''
+
+    if "SEND_DM_NOT_REACTED" in chosen_actions:
+        trigger_id = body["trigger_id"]
+        open_dm_modal(trigger_id, req_meta)
+        
+        req_meta.summary += '''Otworzyłem okienko wysyłania wiadomości :yum:\n'''
+
+    respond(response_type="ephemeral", text=req_meta.summary)
+    print("Pomyslnie wykonano zliczanie reakcji")
+
+def get_private_metadata_from_view(view):
+    if not "private_metadata" in view:
+        raise KeyError("Key 'private_metadata' not found!")
+    
+    return view['private_metadata']
+
+def get_reactions_chosen_in_main(view):
+    chosen_reactions = []
+    for reaction in view["state"]["values"]["SELECT_REACTIONS"]["REACTIONS_LIST"]["selected_options"]:
+        chosen_reactions.append(reaction["value"])
+
+    return chosen_reactions
+
+def summary_reactions(reactions_chosen, req_meta: RequestMetadata):
     reaction_counter = 0
-    for reaction_type in reactions:
-        if reaction_type['name'] in reactions_chosen:
-            reaction_counter += 1
-            # dla każdej reakcji wypisujemy ją, ilość oraz osoby
-            summary += str(reaction_counter) + ". Reakcja: :" + str(reaction_type['name']) \
-                + ": \n\t- Ilość odpowiedzi: " + str(reaction_type['count']) +\
-                "\n\t- Kto głosował:\n"
-            for user in reaction_type["users"]:
-                summary += "\t\t<@" + str(user) + ">\n"
-                if user in members:
-                    members.remove(user)
+    summary = ""
+    req_meta.users_to_ping = req_meta.members
+
+    reactions = [reaction_type for reaction_type in req_meta.reactions if reaction_type['name'] in reactions_chosen]
+
+    for reaction in reactions:
+        reaction_counter += 1
+        summary += get_reaction_single_summary(reaction_counter, reaction)
+
     return summary
 
-
-def show_not_reacted(members, users_to_ping, client):
+def summary_not_reacted(req_meta: RequestMetadata):
     # w members są też boty które trzeba odliczyć żeby wiedzieć czy wszyscy odpowiedzieli
     boty = 0
-    bots_id = ["U03BV419LD9"]
+    bots_id = STRINGS_USER["bots_id"]
     summary = ""
-    if len(members) > 0:
-        # sprawdzamy kto nie odpowiedział
-        summary += "Niewdzięcznicy którzy nie odpowiedzieli to:\n"
-        for user in members:
-            if user in bots_id:
-                boty += 1
-                continue
-            summary += "\t\t<@" + str(user) + ">\n"
-            users_to_ping.append(user)
 
-    if len(members) == boty:
+    req_meta.users_to_ping = [user for user in req_meta.users_to_ping if not user in bots_id]
+    
+    if len(req_meta.users_to_ping) > 0:
+        summary += "Niewdzięcznicy którzy nie odpowiedzieli to:\n"
+        summary += get_users_text_with_links(req_meta.users_to_ping)
+    
+    else:
         summary += "Ja pierdziu ale Ty masz posłuch, każdy odpowiedział!!! :party_blob:"
 
     return summary
 
+def get_reaction_single_summary(no_reaction, reaction):
+    line = str(no_reaction) + ". Reakcja: :" + str(reaction['name']) \
+                + ": \n\t- Ilość odpowiedzi: " + str(reaction['count']) \
+                + "\n\t- Kto głosował:\n"
+    
+    line += get_users_text_with_links(reaction["users"])
+    
+    return line
 
+def get_users_text_with_links(users):
+    summary = ""
+    for user in users:
+        summary += "\t\t<@" + str(user) + ">\n"
 
-@app.view_closed(STRINGS_UTILS["modals"]["main"]["id"])
-def handle_close(ack, body):
-    token = body["token"]
-    requests.pop(token)
-    ack()
-    print("Zamknięto okienko")
+def get_users_not_reacted_to_any_reactions(req_meta: RequestMetadata, reactions):
+    reactions = [reaction_type for reaction_type in req_meta.reactions if reaction_type['name'] in reactions]
 
+    for reaction in reactions:
+        remove_from_ping(reaction, req_meta)
+
+    return req_meta.users_to_ping
+
+def remove_from_ping(reaction, req_meta):
+    for user in reaction["users"]:
+        if user in req_meta.users_to_ping:
+            req_meta.users_to_ping.remove(user)
+
+def get_actions_chosen_from_view(view):
+    chosen_options = []
+    for option in view["state"]["values"]["SELECT_OPTIONS"]["checkboxes-action"]["selected_options"]:
+        chosen_options.append(option["value"])
+
+    return chosen_options
 
 @app.view(STRINGS_UTILS["modals"]["ping"]["id"])
 def handle_ping_submission(ack, body, view):
@@ -176,57 +248,6 @@ def handle_dm_submission(client, ack, body, view):
     print("Zamknięto okienko DM")
 
 
-@app.view(STRINGS_UTILS["modals"]["main"]["id"])
-def handle_submission(client, ack, body, view):
-    token = body["token"]
-    trigger_id = body["trigger_id"]
-    global requests
-    if token not in requests:
-        errors = {}
-        errors["token_not_found"] = "Something went wrong: token not found"
-        ack(response_action="errors", errors=errors)
-        return None
-
-    ack()
-    # print(body)
-    chosen_reactions = []
-    for reaction in view["state"]["values"]["SELECT_REACTIONS"]["REACTIONS_LIST"]["selected_options"]:
-        chosen_reactions.append(reaction["value"])
-
-    str_react = str(show_reactions(
-        chosen_reactions, requests[token][MEMBERS_NAME], requests[token][REACTIONS_NAME]))
-    str_not_react = str(show_not_reacted(
-        requests[token][MEMBERS_NAME], requests[token][USERS_TO_PING_NAME], client))
-
-    for option in view["state"]["values"]["SELECT_OPTIONS"]["checkboxes-action"]["selected_options"]:
-        if str(option["value"]) == "PING":
-            '''ping_users(client, requests[token][USERS_TO_PING_NAME],
-                       requests[token][LINK_TO_MESSAGE_NAME])'''
-            open_ping_modal(client=client, trigger_id=trigger_id,
-                            users_to_ping=requests[token][USERS_TO_PING_NAME], link_to_message=requests[token][LINK_TO_MESSAGE_NAME])
-
-            requests[token][SUMMARY_NAME] += '''
-                Otworzyłem okienko ping
-            '''
-
-        if str(option["value"]) == "SHOW_VOTES":
-            requests[token][SUMMARY_NAME] += str_react
-        if str(option["value"]) == "SHOW_NOT_REACTED":
-            requests[token][SUMMARY_NAME] += str_not_react
-        if str(option["value"]) == "SEND_DM_NOT_REACTED":
-            open_dm_modal(
-                client, trigger_id, requests[token][USERS_TO_PING_NAME], requests[token][LINK_TO_MESSAGE_NAME])
-            # send_dm_to_users(
-            #    client, requests[token][USERS_TO_PING_NAME], requests[token][LINK_TO_MESSAGE_NAME])
-            requests[token][SUMMARY_NAME] += '''
-                Otworzyłem okienko wysyłania wiadomości :yum:
-            '''
-
-    requests[token][RESPOND_NAME](
-        response_type="ephemeral", text=requests[token][SUMMARY_NAME])
-    print("Pomyslnie wykonano zliczanie reakcji")
-    requests.pop(token)
-
 
 def send_dm_to_users(client, users_to_ping, link_to_message, user_reminding):
     text = '''
@@ -251,24 +272,26 @@ def ping_users(users, message_link, user_pinging):
     app.client.chat_postMessage(channel=ping_channel_name, text=ping_message)
 
 
-def open_ping_modal(trigger_id, users_to_ping, link_to_message):
+def open_ping_modal(trigger_id, req_meta: RequestMetadata):
     initial_users = ""
     count = 0
-    for user in users_to_ping:
+    for user in req_meta.users_to_ping:
         if count > 0:
             initial_users += ''',
             '''
         initial_users += '"' + str(user) + '"'
         count += 1
 
-    with open("ping_modal.json", "r") as modal:
-        view = modal.read().replace("{{initial_users}}", initial_users).replace("{{link_to_message}}", link_to_message)
-        
+    replacements = {"{{link_to_message}}": f"{req_meta.link_to_message}",
+                    "{{initial_users}}": f"{initial_users}"}
+    
+    view = load_modal(STRINGS_UTILS["modals"]["ping"]["file"], replacements)
+
     app.client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko ping")
 
 
-def open_dm_modal(trigger_id, users_to_dm, link_to_message):
+def open_dm_modal(trigger_id, req_meta: RequestMetadata):
     initial_users = ""
     count = 0
     for user in users_to_dm:

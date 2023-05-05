@@ -2,5 +2,8 @@
     "general":  {
         "bot_token":  "xoxb-xxx-xxx-xxx",
         "app_token":  "xapp-x-xxx-xxx-xxx"
-    }
+    },
+    "bots_id": [
+        "U03BV419LD9"
+    ]
 }
