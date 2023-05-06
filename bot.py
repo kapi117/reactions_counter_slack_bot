@@ -157,8 +157,6 @@ def get_reactions_chosen_in_main(view):
 def summary_reactions(reactions_chosen, req_meta: RequestMetadata):
     reaction_counter = 0
     summary = ""
-    req_meta.users_to_ping = req_meta.members
-
     reactions = [reaction_type for reaction_type in req_meta.reactions if reaction_type['name'] in reactions_chosen]
 
     for reaction in reactions:
@@ -168,13 +166,8 @@ def summary_reactions(reactions_chosen, req_meta: RequestMetadata):
     return summary
 
 def summary_not_reacted(req_meta: RequestMetadata):
-    # w members są też boty które trzeba odliczyć żeby wiedzieć czy wszyscy odpowiedzieli
-    boty = 0
-    bots_id = STRINGS_USER["bots_id"]
     summary = ""
 
-    req_meta.users_to_ping = [user for user in req_meta.users_to_ping if not user in bots_id]
-    
     if len(req_meta.users_to_ping) > 0:
         summary += "Niewdzięcznicy którzy nie odpowiedzieli to:\n"
         summary += get_users_text_with_links(req_meta.users_to_ping)
@@ -200,11 +193,15 @@ def get_users_text_with_links(users):
     return summary
 
 def get_users_not_reacted_to_any_reactions(req_meta: RequestMetadata, reactions):
+    req_meta.users_to_ping = req_meta.members
+
     reactions = [reaction_type for reaction_type in req_meta.reactions if reaction_type['name'] in reactions]
 
     for reaction in reactions:
         remove_from_ping(reaction, req_meta)
-
+    
+    req_meta.users_to_ping = [user for user in req_meta.users_to_ping if not user in STRINGS_USER["bots_id"]]
+    
     return req_meta.users_to_ping
 
 def remove_from_ping(reaction, req_meta):
@@ -218,6 +215,40 @@ def get_actions_chosen_from_view(view):
         chosen_options.append(option["value"])
 
     return chosen_options
+
+def open_ping_modal(trigger_id, req_meta: RequestMetadata):
+    initial_users = get_users_for_initial_choice
+
+    replacements = {"{{link_to_message}}": f"{req_meta.link_to_message}",
+                    "{{initial_users}}": f"{initial_users}"}
+    
+    view = load_modal(STRINGS_UTILS["modals"]["ping"]["file"], replacements)
+
+    app.client.views_open(trigger_id=trigger_id, view=view)
+    print("Otwarto okienko ping")
+
+def open_dm_modal(trigger_id, req_meta: RequestMetadata):
+    initial_users = get_users_for_initial_choice(req_meta)
+
+    replacements = {"{{link_to_message}}": f"{req_meta.link_to_message}",
+                    "{{initial_users}}": f"{initial_users}"}
+    
+    view = load_modal("dm_modal.json", replacements)
+
+    app.client.views_open(trigger_id=trigger_id, view=view)
+    print("Otwarto okienko dm")
+
+def get_users_for_initial_choice(users):
+    initial_users = ""
+    count = 0
+    for user in users:
+        if count > 0:
+            initial_users += ''',
+            '''
+        initial_users += '"' + str(user) + '"'
+        count += 1
+
+    return initial_users
 
 @app.view(STRINGS_UTILS["modals"]["ping"]["id"])
 def handle_ping_submission(ack, body, view):
@@ -273,49 +304,5 @@ def send_dm_to_users(client, users_to_ping, link_to_message, user_reminding):
             channel=user, text=text)
 
 
-def open_ping_modal(trigger_id, req_meta: RequestMetadata):
-    initial_users = ""
-    count = 0
-    for user in req_meta.users_to_ping:
-        if count > 0:
-            initial_users += ''',
-            '''
-        initial_users += '"' + str(user) + '"'
-        count += 1
-
-    replacements = {"{{link_to_message}}": f"{req_meta.link_to_message}",
-                    "{{initial_users}}": f"{initial_users}"}
-    
-    view = load_modal(STRINGS_UTILS["modals"]["ping"]["file"], replacements)
-
-    app.client.views_open(trigger_id=trigger_id, view=view)
-    print("Otwarto okienko ping")
-
-
-def open_dm_modal(trigger_id, req_meta: RequestMetadata):
-    initial_users = ""
-    count = 0
-    for user in users_to_dm:
-        if count > 0:
-            initial_users += ''',
-            '''
-        initial_users += '"' + str(user) + '"'
-        count += 1
-
-    replacements = {"{{link_to_message}}": f"{link_to_message}",
-                    "{{initial_users}}": f"{initial_users}"}
-    
-    view = load_modal("dm_modal.json", replacements)
-
-    app.client.views_open(trigger_id=trigger_id, view=view)
-    print("Otwarto okienko dm")
-
-
-
-
-
-
-
-# Start your app
 if __name__ == "__main__":
     SocketModeHandler(app, STRINGS_USER["general"]["app_token"]).start()
