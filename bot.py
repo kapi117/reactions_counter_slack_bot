@@ -197,6 +197,7 @@ def get_users_text_with_links(users):
     summary = ""
     for user in users:
         summary += "\t\t<@" + str(user) + ">\n"
+    return summary
 
 def get_users_not_reacted_to_any_reactions(req_meta: RequestMetadata, reactions):
     reactions = [reaction_type for reaction_type in req_meta.reactions if reaction_type['name'] in reactions]
@@ -234,19 +235,31 @@ def get_users_to_ping_from_view(view):
         users_to_ping.append(user)
     return users_to_ping
 
+def ping_users(users, message_link, user_pinging):
+    if len(users) > 0:
+        ping_message = "Ping na życzenie <@" + str(user_pinging) + ">)\nDelikwenci którzy nie odpowiedzieli na wiadomość: " + \
+            str(message_link) + " to:\n"
+        
+        ping_message += get_users_text_with_links(users)
+
+    app.client.chat_postMessage(channel=STRINGS_USER["ping_channel_name"], text=ping_message)
 
 @app.view(STRINGS_UTILS["modals"]["dm"]["id"])
 def handle_dm_submission(client, ack, body, view):
     ack()
     user_reminding = body["user"]["id"]
     link_to_message = view["private_metadata"]
-    users_to_dm = []
-    for user in view["state"]["values"]["SELECT_TO_DM"]["USERS_LIST"]["selected_conversations"]:
-        users_to_dm.append(user)
+    users_to_dm = get_users_to_dm_from_view()
 
     send_dm_to_users(client, users_to_dm, link_to_message, user_reminding)
     print("Zamknięto okienko DM")
 
+def get_users_to_dm_from_view(view):
+    users_to_dm = []
+    for user in view["state"]["values"]["SELECT_TO_DM"]["USERS_LIST"]["selected_conversations"]:
+        users_to_dm.append(user)
+    
+    return users_to_dm
 
 
 def send_dm_to_users(client, users_to_ping, link_to_message, user_reminding):
@@ -258,18 +271,6 @@ def send_dm_to_users(client, users_to_ping, link_to_message, user_reminding):
     for user in users_to_ping:
         client.chat_postMessage(
             channel=user, text=text)
-
-
-def ping_users(users, message_link, user_pinging):
-    ping_channel_name = "#ping"
-    # oznaczamy kogoś za pomocą <@usr_id>
-    if len(users) > 0:
-        ping_message = "*Pan Policjant porządku pilnuje, wursowiczów na slacku wciąż pinguje* (ping na życzenie <@" + str(user_pinging) + ">)\nDelikwenci którzy nie odpowiedzieli na wiadomość: " + \
-            str(message_link) + " to:\n"
-        for user in users:
-            ping_message += "\t<@" + user + ">\n"
-
-    app.client.chat_postMessage(channel=ping_channel_name, text=ping_message)
 
 
 def open_ping_modal(trigger_id, req_meta: RequestMetadata):
