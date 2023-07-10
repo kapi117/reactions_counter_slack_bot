@@ -1,1 +1,6 @@
 .env
+.vscode
+
+utils/__pycache__
+
+assets/strings/user_strings.json

@@ -106,12 +106,12 @@
                     "text": "Wszystkie reakcje",
                     "emoji": true
                 },
-                "options": [
+                "options": 
                     {{reactions_menu}}
-                ],
-                "initial_options": [
+                ,
+                "initial_options": 
                     {{reactions_menu}}
-                ]
+                
             }
         }
     ]
