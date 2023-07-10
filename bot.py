@@ -46,11 +46,7 @@ def open_main(trigger_id, req_meta):
 
     replacements = {"{{reactions_menu}}": f"[{reactions_menu}]"}
 
-    req_meta_str = req_meta.to_string()
-
-    view = load_modal(
-        STRINGS_UTILS["modals"]["main"]["file"], replacements, req_meta_str
-    )
+    view = load_modal(STRINGS_UTILS["modals"]["main"]["file"], replacements, req_meta)
 
     app.client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko")
@@ -109,9 +105,9 @@ def replace_tags_in_text(text, repl_dict):
     return result_text
 
 
-def load_private_metadata_to_modal_text(modal_text, req_meta):
+def load_private_metadata_to_modal_text(modal_text, req_meta: RequestMetadata):
     modal_json = json.loads(modal_text)
-    modal_json["private_metadata"] = req_meta
+    modal_json["private_metadata"] = req_meta.to_string()
     modal_text = json.dumps(modal_json)
     return modal_text
 
@@ -270,28 +266,28 @@ def get_actions_chosen_from_view(view):
 
 
 def open_ping_modal(trigger_id, req_meta: RequestMetadata):
-    initial_users = get_users_for_initial_choice
+    initial_users = get_users_for_initial_choice(req_meta.users_to_ping)
 
     replacements = {
         "{{link_to_message}}": f"{req_meta.link_to_message}",
         "{{initial_users}}": f"{initial_users}",
     }
 
-    view = load_modal(STRINGS_UTILS["modals"]["ping"]["file"], replacements)
+    view = load_modal(STRINGS_UTILS["modals"]["ping"]["file"], replacements, req_meta)
 
     app.client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko ping")
 
 
 def open_dm_modal(trigger_id, req_meta: RequestMetadata):
-    initial_users = get_users_for_initial_choice(req_meta)
+    initial_users = get_users_for_initial_choice(req_meta.users_to_ping)
 
     replacements = {
         "{{link_to_message}}": f"{req_meta.link_to_message}",
         "{{initial_users}}": f"{initial_users}",
     }
 
-    view = load_modal("dm_modal.json", replacements)
+    view = load_modal(STRINGS_UTILS["modals"]["dm"]["file"], replacements, req_meta)
 
     app.client.views_open(trigger_id=trigger_id, view=view)
     print("Otwarto okienko dm")
@@ -313,11 +309,10 @@ def get_users_for_initial_choice(users):
 @app.view(STRINGS_UTILS["modals"]["ping"]["id"])
 def handle_ping_submission(ack, body, view):
     ack()
-    user_pinging = body["user"]["id"]
-    link_to_message = view["private_metadata"]
+    req_meta = RequestMetadata.from_string(view["private_metadata"])
     users_to_ping = get_users_to_ping_from_view(view)
 
-    ping_users(users_to_ping, link_to_message, user_pinging)
+    ping_users(users_to_ping, req_meta)
     print("Zamknięto okienko pingu")
 
 
@@ -330,13 +325,13 @@ def get_users_to_ping_from_view(view):
     return users_to_ping
 
 
-def ping_users(users, message_link, user_pinging):
+def ping_users(users, req_meta: RequestMetadata):
     if len(users) > 0:
         ping_message = (
             "Ping na życzenie <@"
-            + str(user_pinging)
+            + str(req_meta.user)
             + ">)\nDelikwenci którzy nie odpowiedzieli na wiadomość: "
-            + str(message_link)
+            + str(req_meta.link_to_message)
             + " to:\n"
         )
 
@@ -350,11 +345,10 @@ def ping_users(users, message_link, user_pinging):
 @app.view(STRINGS_UTILS["modals"]["dm"]["id"])
 def handle_dm_submission(client, ack, body, view):
     ack()
-    user_reminding = body["user"]["id"]
-    link_to_message = view["private_metadata"]
-    users_to_dm = get_users_to_dm_from_view()
+    req_meta = RequestMetadata.from_string(view["private_metadata"])
+    users_to_dm = get_users_to_dm_from_view(view)
 
-    send_dm_to_users(client, users_to_dm, link_to_message, user_reminding)
+    send_dm_to_users(client, users_to_dm, req_meta)
     print("Zamknięto okienko DM")
 
 
@@ -368,17 +362,17 @@ def get_users_to_dm_from_view(view):
     return users_to_dm
 
 
-def send_dm_to_users(client, users_to_ping, link_to_message, user_reminding):
+def send_dm_to_users(client, users_to_ping, req_meta: RequestMetadata):
     text = (
         """
         Siemanko kochany WRSS'owiczu! :wave: Dostałem zadanie od <@"""
-        + user_reminding
+        + req_meta.user
         + """> przypomnieć Ci żeby odpowiedzieć na wiadomość, która znajduje się tutaj: 
         """
-        + link_to_message
+        + req_meta.link_to_message
         + """
-    Wiem, że pewnie masz niesłychanie dużo pracy, ale myślę, że pójdzie Ci to szybko :wink:
-    A z tego co wiem, lepiej nie lądować na kanale *#ping* :woozy_face:"""
+Wiem, że pewnie masz niesłychanie dużo pracy, ale myślę, że pójdzie Ci to szybko :wink:
+A z tego co wiem, lepiej nie lądować na kanale *#ping* :woozy_face:"""
     )
     for user in users_to_ping:
         client.chat_postMessage(channel=user, text=text)
