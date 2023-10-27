@@ -33,17 +33,16 @@ Można korzystać z bota na tym kanale
 
 1. Zainstalować Pythona [tutaj](https://www.python.org/downloads/)
 2. Do uruchomienia programu potrzebne są biblioteki, które instaluje się w poniższy sposób\*:
-    - `pip install python-dotenv` - służy do korzystania z lokalnych zmiennych środowiskowych
     - `pip install slack_bolt` - API Slack'owe
 3. Pobrać to repozytorium.
-4. Plik [user_strings.json](./assets/strings/user_strings.json) należy pobrać z [Google Drive](https://drive.google.com/file/d/10sCH1o3yOFmY9WHaP5jsAqAMbCgYATo8/view?usp=sharing) i go wstawić zamiast aktualnego.
+4. Plik [user_strings.json](./assets/strings/user_strings.json) należy pobrać z [Google Drive](https://drive.google.com/file/d/1SV11GdoqooM9Afu7zkN5RaLleiPfpMXp/view?usp=drive_link) i go wstawić zamiast aktualnego.
 5. Należy uruchomić program: `python bot.py`
 
     > \*komendy mogą przybierać formę `pip3` i `python3` w zależności od OS i wersji Python
 
 ## Jak korzystać z bota?
 
-Wchodzimy w ... (opcje) wybranej wiadomości, powinien być widoczny program **Analizuj reakcje**.  
+Wchodzimy w ... (opcje) wybranej wiadomości, powinien być widoczny program **Podsumowanie reakcji**.  
  Gdy go nie widać klikamy **More message shortcuts...** i tam z pewnością będzie ;)
 
 ### Miłego korzystania, w razie problemów piszcie/zgłaszajcie bugi :D
