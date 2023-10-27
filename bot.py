@@ -44,7 +44,10 @@ def shortcut_count(ack, respond, payload):
 def open_main(trigger_id, req_meta):
     reactions_menu = create_reactions_menu(req_meta.reactions)
 
-    replacements = {"{{reactions_menu}}": f"[{reactions_menu}]"}
+    replacements = {
+        "{{reactions_menu}}": f"[{reactions_menu}]",
+        "{{inactive_users}}": json.dumps(STRINGS_UTILS["inactive_users"]),
+    }
 
     view = load_modal(STRINGS_UTILS["modals"]["main"]["file"], replacements, req_meta)
 
@@ -125,6 +128,9 @@ def handle_submission(ack, body, view, respond):
         ack(response_action="errors", errors=errors)
         return None
 
+    inactive_users = get_inactive_users_from_main(view)
+    load_inactive_users_to_utils(inactive_users)
+
     ack()
 
     chosen_reactions = get_reactions_chosen_in_main(view)
@@ -167,6 +173,21 @@ def get_private_metadata_from_view(view):
         raise KeyError("Key 'private_metadata' not found!")
 
     return view["private_metadata"]
+
+
+def get_inactive_users_from_main(view):
+    inactive_users = []
+    for user in view["state"]["values"]["SELECT_INACTIVE"]["INACTIVE_USERS_LIST"][
+        "selected_conversations"
+    ]:
+        inactive_users.append(user)
+    return inactive_users
+
+
+def load_inactive_users_to_utils(inactive_users):
+    STRINGS_UTILS["inactive_users"] = inactive_users
+    with open("./assets/strings/utils_strings.json", "w") as f:
+        json.dump(STRINGS_UTILS, f)
 
 
 def get_reactions_chosen_in_main(view):
@@ -233,6 +254,8 @@ def get_users_text_with_links(users):
 def get_users_not_reacted_to_any_reactions(req_meta: RequestMetadata, reactions):
     req_meta.users_to_ping = req_meta.members
 
+    remove_inactive_users_from_ping(req_meta)
+
     reactions = [
         reaction_type
         for reaction_type in req_meta.reactions
@@ -247,6 +270,12 @@ def get_users_not_reacted_to_any_reactions(req_meta: RequestMetadata, reactions)
     ]
 
     return req_meta.users_to_ping
+
+
+def remove_inactive_users_from_ping(req_meta: RequestMetadata):
+    for user in STRINGS_UTILS["inactive_users"]:
+        if user in req_meta.users_to_ping:
+            req_meta.users_to_ping.remove(user)
 
 
 def remove_from_ping(reaction, req_meta):
